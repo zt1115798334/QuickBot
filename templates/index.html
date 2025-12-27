@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库问答系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .query-section, .knowledge-section {
+            margin-bottom: 40px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .answer {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+        }
+        .sources {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .source-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .stats {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .document-list {
+            margin-top: 20px;
+        }
+        .document-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            position: relative;
+        }
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>基于向量检索的知识库问答系统</h1>
+        
+        <!-- Knowledge Base Stats -->
+        <div class="stats">
+            <h3>知识库统计</h3>
+            <p>当前文档数量: <span id="document-count">{{ document_count }}</span></p>
+        </div>
+        
+        <!-- Query Section -->
+        <div class="query-section">
+            <h2>提问</h2>
+            <div class="form-group">
+                <label for="query">输入您的问题：</label>
+                <input type="text" id="query" name="query" placeholder="例如：什么是人工智能？" required>
+            </div>
+            <button onclick="submitQuery()">获取答案</button>
+            
+            <div id="answer" class="answer" style="display: none;">
+                <h3>答案：</h3>
+                <div id="answer-content"></div>
+            </div>
+            
+            <div id="sources" class="sources" style="display: none;">
+                <h3>参考来源：</h3>
+                <div id="sources-content"></div>
+            </div>
+        </div>
+        
+        <!-- Knowledge Base Management -->
+        <div class="knowledge-section">
+            <h2>知识库管理</h2>
+            
+            <!-- Add Document -->
+            <h3>添加文档</h3>
+            <div class="form-group">
+                <label for="document-text">文档内容：</label>
+                <textarea id="document-text" name="document-text" placeholder="输入文档内容..." required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="document-metadata">元数据（JSON格式）：</label>
+                <input type="text" id="document-metadata" name="document-metadata" placeholder="例如：{\"source\": \"网站\"}">
+            </div>
+            <button onclick="addDocument()">添加文档</button>
+            <div id="add-result"></div>
+            
+            <!-- Document List -->
+            <h3>文档列表</h3>
+            <div id="document-list" class="document-list">
+                {% for document in documents %}
+                <div class="document-item">
+                    <strong>ID:</strong> {{ document.id }}<br>
+                    <strong>内容:</strong> {{ document.text[:100] }}{% if document.text|length > 100 %}...{% endif %}<br>
+                    <strong>元数据:</strong> {{ document.metadata }}
+                    <button class="delete-btn" onclick="deleteDocument('{{ document.id }}')">删除</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Submit query
+        function submitQuery() {
+            const query = document.getElementById('query').value;
+            if (!query) {
+                alert('请输入问题！');
+                return;
+            }
+            
+            fetch('/api/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query: query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const answerDiv = document.getElementById('answer');
+                const answerContent = document.getElementById('answer-content');
+                const sourcesDiv = document.getElementById('sources');
+                const sourcesContent = document.getElementById('sources-content');
+                
+                if (data.success) {
+                    answerContent.innerHTML = data.answer;
+                    answerDiv.style.display = 'block';
+                    
+                    // Display sources
+                    if (data.sources && data.sources.length > 0) {
+                        sourcesContent.innerHTML = '';
+                        data.sources.forEach((source, index) => {
+                            const sourceItem = document.createElement('div');
+                            sourceItem.className = 'source-item';
+                            sourceItem.innerHTML = `
+                                <strong>来源 ${index + 1} (相似度: ${(source.similarity * 100).toFixed(2)}%)</strong><br>
+                                <p>${source.text}</p>
+                                <strong>元数据:</strong> ${JSON.stringify(source.metadata)}
+                            `;
+                            sourcesContent.appendChild(sourceItem);
+                        });
+                        sourcesDiv.style.display = 'block';
+                    } else {
+                        sourcesDiv.style.display = 'none';
+                    }
+                } else {
+                    answerContent.innerHTML = '查询失败: ' + data.error;
+                    answerDiv.style.display = 'block';
+                    sourcesDiv.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('查询失败，请稍后重试！');
+            });
+        }
+        
+        // Add document
+        function addDocument() {
+            const text = document.getElementById('document-text').value;
+            const metadataInput = document.getElementById('document-metadata').value;
+            
+            if (!text) {
+                alert('请输入文档内容！');
+                return;
+            }
+            
+            let metadata = {};
+            if (metadataInput) {
+                try {
+                    metadata = JSON.parse(metadataInput);
+                } catch (e) {
+                    alert('元数据格式错误，请输入有效的JSON！');
+                    return;
+                }
+            }
+            
+            fetch('/api/documents', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text, metadata: metadata })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById('add-result');
+                if (data.success) {
+                    resultDiv.innerHTML = '<p style="color: green;">文档添加成功！</p>';
+                    // Clear form
+                    document.getElementById('document-text').value = '';
+                    document.getElementById('document-metadata').value = '';
+                    // Refresh document list
+                    window.location.reload();
+                } else {
+                    resultDiv.innerHTML = `<p style="color: red;">添加失败: ${data.error}</p>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('添加失败，请稍后重试！');
+            });
+        }
+        
+        // Delete document
+        function deleteDocument(docId) {
+            if (confirm('确定要删除这个文档吗？')) {
+                fetch(`/api/documents/${docId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Refresh document list
+                        window.location.reload();
+                    } else {
+                        alert('删除失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('删除失败，请稍后重试！');
+                });
+            }
+        }
+    </script>
+</body>
+</html>

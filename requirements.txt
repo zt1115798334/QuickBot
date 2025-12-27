@@ -1,0 +1,6 @@
+sentence-transformers
+faiss-cpu
+flask
+werkzeug
+python-dotenv
+pymilvus
