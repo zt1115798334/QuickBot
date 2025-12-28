@@ -6,7 +6,9 @@ class KnowledgeBase:
     def __init__(self):
         self.embedder = TextEmbedder()
         self.vector_index = VectorIndexFactory.create_index()
-    
+        index_type = type(self.vector_index).__name__
+        print(f"Created index type: {index_type}")
+
     def add_document(self, text, metadata=None):
         """Add a single document to the knowledge base"""
         if not text or not isinstance(text, str):

@@ -2,6 +2,7 @@ from knowledge_base import KnowledgeBase
 
 class QueryProcessor:
     def __init__(self, knowledge_base=None):
+        print(f"Initializing QueryProcessor...{knowledge_base}")
         if knowledge_base:
             self.knowledge_base = knowledge_base
         else:

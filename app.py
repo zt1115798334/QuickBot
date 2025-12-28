@@ -10,11 +10,11 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 
-# Initialize services
-knowledge_base = KnowledgeBase()
-query_processor = QueryProcessor(knowledge_base=knowledge_base)
-os.environ['HTTP_PROXY'] = 'http://127.0.0.1:10809'
-os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:10809'
+# Initialize services only when __name__ == '__main__' to avoid duplicate initialization during debug restart
+# This prevents Milvus connection conflicts
+knowledge_base = None
+query_processor = None
+
 # Routes
 @app.route('/')
 def index():
@@ -63,8 +63,22 @@ def api_get_stats():
     return jsonify({'success': True, 'stats': stats})
 
 if __name__ == '__main__':
+    # Initialize services here to prevent duplicate initialization
+    knowledge_base = KnowledgeBase()
+    query_processor = QueryProcessor(knowledge_base=knowledge_base)
+    
+    os.environ['HTTP_PROXY'] = 'http://127.0.0.1:10809'
+    os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:10809'
+    
     host = os.getenv('FLASK_HOST', '0.0.0.0')
     port = int(os.getenv('FLASK_PORT', 5000))
     debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
     
-    app.run(host=host, port=port, debug=debug)
+    print(f"Starting Flask server with debug mode: {debug}")
+    print(f"Note: If you encounter Milvus connection issues in debug mode, you can:")
+    print(f"1. Set FLASK_DEBUG=False in your .env file")
+    print(f"2. Or start Flask without auto-reloader")
+    
+    # Disable Flask auto-reloader to prevent connection conflicts with Milvus
+    # Use use_reloader=False to avoid duplicate processes trying to connect to Milvus
+    app.run(host=host, port=port, debug=debug, use_reloader=False)

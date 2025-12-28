@@ -21,20 +21,34 @@ class MilvusIndex:
         self.collection_name = os.getenv("MILVUS_COLLECTION", "knowledge_base")
         self.dimension = 512  # Dimension for BAAI/bge-small-zh-v1.5
         self.collection = None
-        
-        # Connect to Milvus
-        self.connect()
-        
-        # Create or load collection
-        self.create_collection()
-        
-        # Load documents cache
         self.documents = []
-        self.load_documents_cache()
-    
-    def connect(self):
-        """Connect to Milvus server"""
+        
         try:
+            # Connect to Milvus
+            self.connect()
+            
+            # Create or load collection
+            self.create_collection()
+            
+            # Load documents cache
+            self.load_documents_cache()
+        except Exception as e:
+            print(f"Milvus initialization failed: {e}")
+            raise  # Ensure the exception is propagated to VectorIndexFactory
+
+    def connect(self):
+        """Connect to Milvus server, handle existing connections and potential errors"""
+        try:
+            # Clean up any existing connections to avoid conflicts
+            if "default" in connections.list_connections():
+                try:
+                    connections.disconnect("default")
+                    print("Disconnected existing Milvus connection")
+                except:
+                    # Ignore errors during disconnection
+                    pass
+            
+            # Create new connection
             connections.connect(
                 alias="default",
                 host=self.host,

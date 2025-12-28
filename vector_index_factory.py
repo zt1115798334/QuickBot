@@ -20,7 +20,6 @@ class VectorIndexFactory:
                 print("Warning: pymilvus not available, falling back to FAISS")
             except Exception as e:
                 print(f"Warning: Failed to initialize Milvus index: {e}, falling back to FAISS")
-        
-        # Default to FAISS (also used as fallback if Milvus fails)
+        # Fallback to FAISS for all cases: Milvus unavailable, connection failed, or vector_db_type != "milvus"
         from faiss_index import VectorIndex
         return VectorIndex()
